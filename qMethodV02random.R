@@ -1,6 +1,6 @@
 #### Q-method through R - random benchmark
 #### FrK; 2019-10-04; created
-#### FrK; 2019-10-17; updated
+#### FrK; 2019-10-18; updated
 
 #### Content:
 ## 1) Loading bootStrapped datafiles
@@ -11,7 +11,7 @@
 
 ## Erasing memory and setting the working directory
 setwd("c:/Users/Kalvas/ownCloud/!Luznak/")
-rm(list=ls())
+#rm(list=ls())
 getwd()
 
 ## Important variables
@@ -42,20 +42,16 @@ results = qmethod(read.dta(paste0("randomized", iter, "RQM1.dta")), nfactors = 2
 # Storing scores from 1st file
 scores = results[[6]]
 names(scores) = c("fac1_fil1", "fac2_fil1")
-#str(scores)
 
 # Storing Factor1,2 from 1st file
 factor1 = as.data.frame(rbind(scores$fac1_fil1))
 factor2 = as.data.frame(rbind(scores$fac2_fil1))
-#str(factor1)
-#str(factor2)
 
 # Storing distances from 1st file
 x = results[[8]]
 distances = as.data.frame(rbind(abs(x$f1_f2)))
-#str(distances)
 
-## Loading all other columns
+## Loading all other 1499 rows/columns
 for(n in 2:1500) {
   # Loading data
   file = read.dta(paste0("randomized", iter, "RQM", n, ".dta"))
@@ -65,8 +61,6 @@ for(n in 2:1500) {
   x = results[[6]]
   factor1 = rbind.data.frame(factor1, x$fsc_f1)
   factor2 = rbind.data.frame(factor2, x$fsc_f2)
-  #names(x) = c(paste0("fac1_fil", n), paste0("fac2_fil", n))
-  #scores = data.frame(scores, x)
 
   # Adding distances 
   x = results[[8]]
@@ -81,10 +75,6 @@ vNames = c(vNames, "V37", "V38", "V39", "V40", "V41", "V42", "V43", "V44", "V45"
 names(distances) = vNames
 names(factor1) = vNames
 names(factor2) = vNames
-#str(scores)
-#str(factor1)
-#str(factor2)
-#str(distances)
 
 
 #### 4) Apropriatng data
@@ -96,23 +86,8 @@ library(here)
 library(magrittr)
 library(ggplot2)
 library(ggpubr)
+library(psych)
 
-#sNames = c("V01", "V02", "V03", "V04", "V05", "V06", "V07", "V08", "V09", "V10", "V11", "V12")
-#sNames = c(sNames, "V13", "V14", "V15", "V16", "V17", "V18", "V19", "11-V20", "10-V21", "06-V22", "12-V23", "07-V24")
-#sNames = c(sNames, "03-V25", "V26", "02-V27", "05-V28", "V29", "V30", "V31", "V32", "V33", "01-V34", "08-V35", "V36")
-#sNames = c(sNames, "V37", "V38", "V39", "V40", "V41", "V42", "V43", "09-V44", "04-V45", "V46", "V47", "V48")
-#names(distances) = sNames
-
-## Graph with differences of sentences in z-scores
-bootStrapped.distances = distances %>%
-gather("Sentence", "Distance") %>% 
-ggplot(aes(x = reorder(Sentence, -Distance), y = Distance)) +
-  xlab("Sentence") +
-  geom_boxplot() +
-  geom_hline(aes(yintercept = 2)) +
-  geom_hline(aes(yintercept = 1.5)) +
-  geom_hline(aes(yintercept = 1)) +
-  theme_minimal()
 
 ## Scatterplot of factors' scores
 # Factor2 averages ...
@@ -133,7 +108,10 @@ x = factor1 %>%
 xy = cbind.data.frame(x, y$y)  
 names(xy) = c("var", "factor1", "factor2")
 
-# Scatterplot:
+# !!! Computing Factors' Eucleidian Distances and storing them to the FED !!!
+fed = c(fed, sqrt(sum((xy$factor1 - xy$factor2) ^ 2)))
+
+# Defining scatterplot:
 bootStrapped.scores = xy %>%
 ggplot(aes(x = factor1, y = factor2)) +
   geom_point() +
@@ -172,33 +150,59 @@ ggplot(aes(x = factor1, y = factor2)) +
   geom_vline(aes(xintercept = -3)) +
   theme_minimal()
 
-## Exporting graphs
+## Defining box plot with differences of sentences in z-scores
+bootStrapped.distances = distances %>%
+  gather("Sentence", "Distance") %>% 
+  ggplot(aes(x = reorder(Sentence, -Distance), y = Distance)) +
+  xlab("Sentence") +
+  geom_boxplot() +
+  geom_hline(aes(yintercept = 2)) +
+  geom_hline(aes(yintercept = 1.5)) +
+  geom_hline(aes(yintercept = 1)) +
+  theme_minimal()
+
+#### Exporting graphs
 ggarrange(
-  ##wholeSample.distances, 
   bootStrapped.distances, 
   ncol = 1,
-  labels = c(paste0("Boot strapped sample no. ", iter, ": Sentences' distances"))
+  labels = c(paste0("Random boot strapped sample no. ", iter, ": Sentences' distances"))
   ) %>%
   ggexport(
-    filename = paste0("randomized", iter, "distances2Factors.png"),
+    filename = paste0("distances2FactorsRandomized", iter, ".png"),
     width = 1600,
     height = 600)
 
-bootStrapped.distances
-
-
 ggarrange(
-  ##wholeSample.scores, 
   bootStrapped.scores, 
   ncol = 1,
-  ##labels = c("Whole sample", "Boot strapped sample")
-  labels = c(paste0("Boot strapped sample no. ", iter, ": Factors' scores"))
+  labels = c(paste0("Random boot strapped sample no. ", iter, ": Factors' scores"))
   ) %>%
   ggexport(
-    filename = paste0("randomized", iter, "scores2Factors.png"),
-    width = 1600,
-    height = 1600)
-
-bootStrapped.scores
+    filename = paste0("scores2FactorsRandomized", iter, ".png"),
+    width = 800,
+    height = 800)
 } ## End of iteration over 150 main random files
 
+## Defining box plot with Factors' Euclidean distances
+randomFactors.distances = as.data.frame(fed) %>%
+  ggplot(aes(y = fed)) +
+  ylab("Factors' Euclidean distance") +
+  geom_boxplot() +
+  geom_hline(aes(yintercept = factEuDist)) +
+  theme_minimal()
+
+## Exporting graph
+ggarrange(
+  randomFactors.distances, 
+  ncol = 1,
+  labels = "Factors' Euclidean distances: Random samples vs. Real sample (line)"
+) %>%
+  ggexport(
+    filename = "distances2FactorsEuclidean.png",
+    width = 800,
+    height = 800)
+
+## Description statistics
+describe(as.data.frame(fed), 
+         IQR = TRUE, 
+         quant = c(.05, .1, .25, .5, .75, .9, .95))
